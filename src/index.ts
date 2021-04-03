@@ -172,6 +172,26 @@ app.get('/', async (req, res) => {
   }
 });
 
+app.get('/python', async (req, res) => {
+  // Type declaration isn't working for Blockly.JavaScript.
+  // Possible solutions here:
+  // https://github.com/google/blockly/issues/4742
+  // https://github.com/google/blockly/issues/2995
+
+  var xml = Blockly.Xml.textToDom(xmlText);
+  var workspace = new Blockly.Workspace();
+  Blockly.Xml.domToWorkspace(xml, workspace);
+
+  try {
+    // @ts-ignore
+    var code = Blockly.Python.workspaceToCode(workspace);
+    res.send(code.replaceAll('\n', '<br />'));
+  } catch (e) {
+    console.log('error', e);
+    res.status(400).send(e);
+  }
+});
+
 const PORT = process.env.PORT || 8100;
 
 app.listen(PORT, () => {
