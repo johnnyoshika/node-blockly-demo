@@ -136,6 +136,9 @@ app.get('/', async (req, res) => {
   // @ts-ignore
   var code = Blockly.JavaScript.workspaceToCode(workspace);
 
+  // A little ugly, but this is how the XML is parsed with xml2js
+  // (await xml2js.parseStringPromise(xmlText))?.xml?.variables)[0].variable === [{ _: 'firstDayOfMonth', '$': { id: 'zHLK1pJ)ha4:E*Un1gv_' } },{ _: 'thirdDayOfMonth', '$': { id: 'fZ3m*9T$0:_Q*D93f0zb' } },{ _: 'secondDayOfMonth', '$': { id: 'e.).9(qlkLl^TxBJkcQX' } }]
+
   const variables =
     (await xml2js.parseStringPromise(xmlText))?.xml?.variables ?? [];
   const variableNames = variables[0].variable.map(
@@ -154,17 +157,19 @@ app.get('/', async (req, res) => {
         }, '')}
         return params;
       }
-      global.params = generateVariables();
+      generateVariables();
     `;
 
   try {
-    eval(execute);
+    // // Technique to pass context into eval: https://stackoverflow.com/a/27205042/188740
+    // const context = {};
+
+    const params = eval(execute);
+    res.send(params);
   } catch (e) {
     console.log('error', e);
+    res.status(400).send(e);
   }
-
-  // @ts-ignore
-  res.send(global.params);
 });
 
 const PORT = process.env.PORT || 8100;
