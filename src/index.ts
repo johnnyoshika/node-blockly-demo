@@ -2,6 +2,7 @@ import 'dotenv/config';
 import express from 'express';
 const app = express();
 import Blockly from 'blockly';
+import xml2js from 'xml2js';
 
 const xmlText = `<xml
 xmlns="https://developers.google.com/blockly/xml">
@@ -115,7 +116,7 @@ xmlns="https://developers.google.com/blockly/xml">
 </block>
 </xml>`;
 
-app.get('/', (req, res) => {
+app.get('/', async (req, res) => {
   // Type declaration isn't working for Blockly.JavaScript.
   // Possible solutions here:
   // https://github.com/google/blockly/issues/4742
@@ -135,7 +136,35 @@ app.get('/', (req, res) => {
   // @ts-ignore
   var code = Blockly.JavaScript.workspaceToCode(workspace);
 
-  res.send(code);
+  const variables =
+    (await xml2js.parseStringPromise(xmlText))?.xml?.variables ?? [];
+  const variableNames = variables[0].variable.map(
+    (v: any) => v._,
+  ) as string[];
+
+  const execute = `
+      function generateVariables() {
+        ${code}
+        var params = {};
+        ${variableNames.reduce((assign, variable) => {
+          return (
+            assign +
+            `if ('undefined' !== typeof ${variable}) params['${variable}'] = ${variable};`
+          );
+        }, '')}
+        return params;
+      }
+      global.params = generateVariables();
+    `;
+
+  try {
+    eval(execute);
+  } catch (e) {
+    console.log('error', e);
+  }
+
+  // @ts-ignore
+  res.send(global.params);
 });
 
 const PORT = process.env.PORT || 8100;
